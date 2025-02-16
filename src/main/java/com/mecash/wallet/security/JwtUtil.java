@@ -2,6 +2,7 @@ package com.mecash.wallet.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import com.mecash.wallet.config.JwtProperties;
 import com.mecash.wallet.model.RoleType;
@@ -16,10 +17,9 @@ import java.util.function.Function;
 public class JwtUtil {
 
     private final SecretKey secretKey;
-    private final JwtProperties jwtProperties;
+    private static final long INACTIVITY_TIMEOUT = 20 * 60 * 1000; // 20 minutes
 
     public JwtUtil(JwtProperties jwtProperties) {
-        this.jwtProperties = jwtProperties;
         this.secretKey = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes());
     }
 
@@ -28,13 +28,13 @@ public class JwtUtil {
      */
     public String generateToken(String email, RoleType role) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", role.name()); // Store role as a String
+        claims.put("role", role.name());
 
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(email)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + jwtProperties.getExpiration()))
+                .setExpiration(new Date(System.currentTimeMillis() + INACTIVITY_TIMEOUT))
                 .signWith(secretKey)
                 .compact();
     }
@@ -42,8 +42,9 @@ public class JwtUtil {
     /**
      * Validate JWT token.
      */
-    public boolean validateToken(String token, String username) {
-        return extractUsername(token).equals(username) && !isTokenExpired(token);
+    public boolean validateToken(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
 
     /**
@@ -87,18 +88,19 @@ public class JwtUtil {
     }
 
     /**
-     * Refresh token by regenerating it with the same user details.
+     * Refresh token if the user is still active.
      */
     public String refreshToken(String token) {
         Claims claims = extractAllClaims(token);
+        Date issuedAt = claims.getIssuedAt();
+        long currentTime = System.currentTimeMillis();
 
-        if (isTokenExpired(token)) {
+        if (currentTime - issuedAt.getTime() < INACTIVITY_TIMEOUT) {
             return generateToken(
                 claims.getSubject(), 
-                RoleType.valueOf(claims.get("role", String.class)) // Convert role back to Enum
+                RoleType.valueOf(claims.get("role", String.class))
             );
-        } else {
-            throw new JwtException("Token is still valid, refresh not allowed");
         }
+        return token;
     }
 }

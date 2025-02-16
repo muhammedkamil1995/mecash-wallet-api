@@ -1,24 +1,36 @@
 package com.mecash.wallet.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 public class LoginRequest {
-    private String username;
-    private String password; // Added password field
-    private String role;
+
+    @NotNull
+    @NotBlank
+    @Email(message = "Invalid email format")  // ✅ Ensure email is valid
+    private String email;
+
+    @NotNull
+    @NotBlank(message = "Password cannot be empty")  // ✅ Prevent empty password
+    private String password;
+
+    private String role = "USER";  // ✅ Default role if not provided
 
     public LoginRequest() {}
 
-    public LoginRequest(String username, String password, String role) {
-        this.username = username;
+    public LoginRequest(String email, String password, String role) {
+        this.email = email;
         this.password = password;
-        this.role = role;
+        this.role = (role != null && !role.isEmpty()) ? role.toUpperCase() : "USER";  // ✅ Prevent null/empty role
     }
 
-    public String getUsername() {
-        return username;
+    public String getEmail() {
+        return email;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getPassword() {
@@ -34,11 +46,6 @@ public class LoginRequest {
     }
 
     public void setRole(String role) {
-        this.role = role;
-    }
-
-    public String getEmail() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getEmail'");
+        this.role = (role != null && !role.isEmpty()) ? role.toUpperCase() : "USER";  // ✅ Safe default role
     }
 }

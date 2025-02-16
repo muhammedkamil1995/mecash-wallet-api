@@ -27,12 +27,12 @@ public class User {
         joinColumns = @JoinColumn(name = "user_id"),
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
-    private Set<Role> roles = new HashSet<>(); 
+    private Set<Role> roles = new HashSet<>();  // Ensured proper role initialization
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Wallet> wallets = new HashSet<>(); 
 
-  
+    // Constructors
     public User() {}
 
     public User(String username, String email, String password) {
@@ -59,4 +59,9 @@ public class User {
 
     public Set<Wallet> getWallets() { return wallets; }
     public void setWallets(Set<Wallet> wallets) { this.wallets = wallets; }
+
+    // Helper method to add a role
+    public void addRole(Role role) {
+        this.roles.add(role);
+    }
 }

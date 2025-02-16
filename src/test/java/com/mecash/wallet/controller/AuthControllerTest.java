@@ -40,15 +40,17 @@ class AuthControllerTest {
     }
 
     @Test
-    void shouldReturnTokenOnSuccessfulLogin() throws Exception {
-        when(authService.login(any(LoginRequest.class)))
-                .thenReturn(new AuthResponse("mocked-jwt-token", "Login successful"));
+void shouldReturnTokenOnSuccessfulLogin() throws Exception {
+    when(authService.login(any(LoginRequest.class)))
+            .thenReturn(new AuthResponse("mocked-jwt-token", "Login successful"));
 
-        mockMvc.perform(post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"email\": \"test@example.com\", \"password\": \"password123\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("mocked-jwt-token"))
-                .andExpect(jsonPath("$.message").value("Login successful"));
-    }
+    mockMvc.perform(post("/api/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"email\": \"test@example.com\", \"password\": \"password123\", \"role\": \"USER\"}")) // ✅ Now matches LoginRequest
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.token").value("mocked-jwt-token"))
+            .andExpect(jsonPath("$.message").value("Login successful"));
+}
+
+    
 }

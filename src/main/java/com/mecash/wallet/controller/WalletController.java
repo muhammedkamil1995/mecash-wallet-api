@@ -1,6 +1,7 @@
 package com.mecash.wallet.controller;
 
 import com.mecash.wallet.service.WalletService;
+import com.mecash.wallet.model.Wallet; // Add this import
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,29 +18,37 @@ public class WalletController {
     }
 
     @PostMapping("/{userId}/create")
-    public ResponseEntity<String> createWallet(@PathVariable Long userId) {
-        walletService.createWallet(userId);
-        return ResponseEntity.ok("Wallet created successfully");
+    public ResponseEntity<String> createWallet(
+            @PathVariable Long userId,
+            @RequestParam String currency) {
+        walletService.createWallet(userId, currency);
+        return ResponseEntity.ok("Wallet created successfully for currency: " + currency);
     }
 
     @GetMapping("/{userId}/balance")
-    public ResponseEntity<BigDecimal> getBalance(@PathVariable Long userId) {
-        return ResponseEntity.ok(walletService.getBalance(userId));
+    public ResponseEntity<BigDecimal> getBalance(
+            @PathVariable Long userId,
+            @RequestParam String currency) {
+        return ResponseEntity.ok(walletService.getBalance(userId, currency));
     }
 
     @PostMapping("/{userId}/credit")
     public ResponseEntity<String> creditWallet(
             @PathVariable Long userId,
-            @RequestParam BigDecimal amount) {  // ✅ Removed currency parameter
-        walletService.creditWallet(userId, amount);
-        return ResponseEntity.ok("Wallet credited successfully");
+            @RequestParam BigDecimal amount,
+            @RequestParam String currency) {
+        Wallet wallet = walletService.findWalletByUserIdAndCurrency(userId, currency);
+        walletService.creditWallet(wallet, amount);
+        return ResponseEntity.ok("Wallet credited successfully for currency: " + currency);
     }
 
     @PostMapping("/{userId}/debit")
     public ResponseEntity<String> debitWallet(
             @PathVariable Long userId,
-            @RequestParam BigDecimal amount) {  // ✅ Removed currency parameter
-        walletService.debitWallet(userId, amount);
-        return ResponseEntity.ok("Wallet debited successfully");
+            @RequestParam BigDecimal amount,
+            @RequestParam String currency) {
+        Wallet wallet = walletService.findWalletByUserIdAndCurrency(userId, currency);
+        walletService.debitWallet(wallet, amount);
+        return ResponseEntity.ok("Wallet debited successfully for currency: " + currency);
     }
 }

@@ -21,10 +21,20 @@ public class Role {
         this.name = name;
     }
 
-    // Getter for Role Name
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public RoleType getName() { 
         return name;
     }
 
-    public void setName(RoleType name) { this.name = name; }
+    public void setName(RoleType name) { 
+        this.name = name; 
+    }
 }

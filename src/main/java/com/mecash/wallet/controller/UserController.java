@@ -1,5 +1,6 @@
 package com.mecash.wallet.controller;
 
+import com.mecash.wallet.dto.RegisterRequest;
 import com.mecash.wallet.model.User;
 import com.mecash.wallet.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -29,8 +30,14 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
-        return ResponseEntity.ok(userService.createUser(user));
+    // ✅ Fixed: User registration endpoint
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@RequestBody RegisterRequest request) {
+        try {
+            User registeredUser = userService.registerUser(request);
+            return ResponseEntity.ok(registeredUser);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

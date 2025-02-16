@@ -7,9 +7,10 @@ import com.mecash.wallet.repository.UserRepository;
 import com.mecash.wallet.repository.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -17,6 +18,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class WalletServiceTest {
 
     @InjectMocks
@@ -30,7 +32,7 @@ class WalletServiceTest {
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+        // This is now handled by MockitoExtension, no need for explicit annotation opening
     }
 
     @Test
@@ -39,10 +41,10 @@ class WalletServiceTest {
         user.setId(1L);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(walletRepository.findByUserId(1L)).thenReturn(Optional.empty());
-        when(walletRepository.save(any(Wallet.class))).thenReturn(new Wallet(user, null, null));
+        when(walletRepository.existsByUserIdAndCurrency(1L, "USD")).thenReturn(false);
+        when(walletRepository.save(any(Wallet.class))).thenReturn(new Wallet(user, "USD", BigDecimal.ZERO));
 
-        Wallet wallet = walletService.createWallet(1L);
+        Wallet wallet = walletService.createWallet(1L, "USD");
 
         assertNotNull(wallet);
         verify(walletRepository, times(1)).save(any(Wallet.class));
@@ -52,7 +54,7 @@ class WalletServiceTest {
     void shouldThrowExceptionIfUserNotFound() {
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
-        WalletException exception = assertThrows(WalletException.class, () -> walletService.createWallet(1L));
+        WalletException exception = assertThrows(WalletException.class, () -> walletService.createWallet(1L, "USD"));
 
         assertEquals("User not found", exception.getMessage());
     }
@@ -61,31 +63,33 @@ class WalletServiceTest {
     void shouldGetBalanceSuccessfully() {
         Wallet wallet = new Wallet();
         wallet.setBalance(new BigDecimal("200.00"));
+        wallet.setCurrency("USD");
 
-        when(walletRepository.findByUserId(1L)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdAndCurrency(1L, "USD")).thenReturn(Optional.of(wallet));
 
-        BigDecimal balance = walletService.getBalance(1L);
+        BigDecimal balance = walletService.getBalance(1L, "USD");
 
         assertEquals(new BigDecimal("200.00"), balance);
     }
 
     @Test
-    void shouldThrowExceptionIfWalletNotFound() {
-        when(walletRepository.findByUserId(1L)).thenReturn(Optional.empty());
+    void shouldThrowExceptionIfWalletNotFoundForBalance() {
+        when(walletRepository.findByUserIdAndCurrency(1L, "USD")).thenReturn(Optional.empty());
 
-        WalletException exception = assertThrows(WalletException.class, () -> walletService.getBalance(1L));
+        WalletException exception = assertThrows(WalletException.class, () -> walletService.getBalance(1L, "USD"));
 
-        assertEquals("Wallet not found", exception.getMessage());
+        assertEquals("Wallet not found for currency USD", exception.getMessage());
     }
 
     @Test
     void shouldCreditWalletSuccessfully() {
         Wallet wallet = new Wallet();
         wallet.setBalance(new BigDecimal("100.00"));
+        wallet.setCurrency("USD");
 
-        when(walletRepository.findByUserId(1L)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdAndCurrency(1L, "USD")).thenReturn(Optional.of(wallet));
 
-        walletService.creditWallet(1L, new BigDecimal("50.00"));
+        walletService.creditWallet(wallet, new BigDecimal("50.00"));
 
         assertEquals(new BigDecimal("150.00"), wallet.getBalance());
         verify(walletRepository, times(1)).save(wallet);
@@ -95,10 +99,11 @@ class WalletServiceTest {
     void shouldDebitWalletSuccessfully() {
         Wallet wallet = new Wallet();
         wallet.setBalance(new BigDecimal("100.00"));
+        wallet.setCurrency("USD");
 
-        when(walletRepository.findByUserId(1L)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdAndCurrency(1L, "USD")).thenReturn(Optional.of(wallet));
 
-        walletService.debitWallet(1L, new BigDecimal("50.00"));
+        walletService.debitWallet(wallet, new BigDecimal("50.00"));
 
         assertEquals(new BigDecimal("50.00"), wallet.getBalance());
         verify(walletRepository, times(1)).save(wallet);

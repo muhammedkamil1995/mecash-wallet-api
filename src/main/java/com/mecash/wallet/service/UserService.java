@@ -3,20 +3,33 @@ package com.mecash.wallet.service;
 import com.mecash.wallet.dto.RegisterRequest;
 import com.mecash.wallet.exception.UserAlreadyExistsException;
 import com.mecash.wallet.exception.UserNotFoundException;
+import com.mecash.wallet.model.Role;
+import com.mecash.wallet.model.RoleType;
 import com.mecash.wallet.model.User;
+import com.mecash.wallet.repository.RoleRepository;
 import com.mecash.wallet.repository.UserRepository;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
-public class UserService {
+public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public List<User> getAllUsers() {
@@ -31,6 +44,7 @@ public class UserService {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new UserAlreadyExistsException("Email already exists!");
         }
+        user.setPassword(passwordEncoder.encode(user.getPassword())); 
         return userRepository.save(user);
     }
 
@@ -39,11 +53,11 @@ public class UserService {
                 .map(existingUser -> {
                     existingUser.setUsername(updatedUser.getUsername());
                     existingUser.setEmail(updatedUser.getEmail());
-                    existingUser.setPassword(updatedUser.getPassword());
+                    existingUser.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
                     existingUser.setRoles(updatedUser.getRoles());
                     return userRepository.save(existingUser);
                 })
-                .orElseThrow(() -> new RuntimeException("User not found!"));
+                .orElseThrow(() -> new UserNotFoundException("User not found!"));
     }
 
     public void deleteUser(Long id) {
@@ -54,7 +68,38 @@ public class UserService {
     }
 
     public User registerUser(RegisterRequest request) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'registerUser'");
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new UserAlreadyExistsException("Email already exists!");
+        }
+
+        // ✅ Check if "USER" role exists, else create it
+        Role userRole = roleRepository.findByName(RoleType.USER)
+                .orElseGet(() -> {
+                    Role newRole = new Role(RoleType.USER);
+                    return roleRepository.save(newRole);
+                });
+
+        Set<Role> roles = new HashSet<>();
+        roles.add(userRole);
+
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword())); 
+        user.setRoles(roles);
+
+        return userRepository.save(user);
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getEmail())
+                .password(user.getPassword())
+                .roles(user.getRoles().stream().map(role -> role.getName().name()).toArray(String[]::new)) 
+                .build();
     }
 }

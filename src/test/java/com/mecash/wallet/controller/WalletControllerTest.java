@@ -8,12 +8,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
-
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -37,41 +35,48 @@ class WalletControllerTest {
 
     @Test
     void shouldCreateWalletSuccessfully() throws Exception {
-        when(walletService.createWallet(1L)).thenReturn(new Wallet());
+        // Since createWallet now takes a currency parameter, adjust the test accordingly
+        when(walletService.createWallet(1L, "USD")).thenReturn(new Wallet());
 
-        mockMvc.perform(post("/wallet/create/1"))
-                .andExpect(status().isOk());
+        mockMvc.perform(post("/wallets/{userId}/create", 1L)
+                .param("currency", "USD"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Wallet created successfully for currency: USD"));
 
-        verify(walletService, times(1)).createWallet(1L);
+        verify(walletService, times(1)).createWallet(1L, "USD");
     }
 
     @Test
     void shouldGetWalletBalance() throws Exception {
-        when(walletService.getBalance(1L)).thenReturn(new BigDecimal("100.00"));
+        when(walletService.getBalance(1L, "USD")).thenReturn(new BigDecimal("100.00"));
 
-        mockMvc.perform(get("/wallet/balance/1"))
+        mockMvc.perform(get("/wallets/{userId}/balance", 1L)
+                .param("currency", "USD"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("100.00"));
 
-        verify(walletService, times(1)).getBalance(1L);
+        verify(walletService, times(1)).getBalance(1L, "USD");
     }
 
     @Test
     void shouldCreditWalletSuccessfully() throws Exception {
-        mockMvc.perform(post("/wallet/credit/1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"amount\": 50.00}"))
-                .andExpect(status().isOk());
+        when(walletService.findWalletByUserIdAndCurrency(1L, "USD")).thenReturn(new Wallet());
 
+        mockMvc.perform(post("/wallets/{userId}/credit", 1L)
+                .param("amount", "50.00")
+                .param("currency", "USD"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Wallet credited successfully for currency: USD"));
     }
 
     @Test
     void shouldDebitWalletSuccessfully() throws Exception {
-        mockMvc.perform(post("/wallet/debit/1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"amount\": 30.00}"))
-                .andExpect(status().isOk());
+        when(walletService.findWalletByUserIdAndCurrency(1L, "USD")).thenReturn(new Wallet());
 
-    
+        mockMvc.perform(post("/wallets/{userId}/debit", 1L)
+                .param("amount", "30.00")
+                .param("currency", "USD"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Wallet debited successfully for currency: USD"));
     }
 }

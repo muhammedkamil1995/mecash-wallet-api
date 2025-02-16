@@ -35,12 +35,12 @@ class UserServiceTest {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("newuser@example.com");
         request.setPassword("password123");
-        request.setName("New User");
+        request.setUsername("NewUser");  // ✅ FIXED: Use username instead of name
 
         User newUser = new User();
         newUser.setEmail(request.getEmail());
         newUser.setPassword("hashedPassword");
-        newUser.setUsername(request.getName());
+        newUser.setUsername(request.getUsername());
 
         when(userRepository.existsByEmail("newuser@example.com")).thenReturn(false);
         when(passwordEncoder.encode("password123")).thenReturn("hashedPassword");
@@ -51,7 +51,7 @@ class UserServiceTest {
         assertNotNull(result);
         assertEquals("newuser@example.com", result.getEmail());
         assertEquals("hashedPassword", result.getPassword());
-        assertEquals("New User", result.getUsername());
+        assertEquals("NewUser", result.getUsername());  // ✅ FIXED: Use username
         verify(userRepository, times(1)).save(any(User.class));
     }
 
@@ -60,7 +60,7 @@ class UserServiceTest {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("existing@example.com");
         request.setPassword("password123");
-        request.setName("Existing User");
+        request.setUsername("ExistingUser");
 
         when(userRepository.existsByEmail("existing@example.com")).thenReturn(true);
 
