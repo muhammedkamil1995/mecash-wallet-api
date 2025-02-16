@@ -18,7 +18,7 @@ JUnit & Mockito (Testing)
 
 
 # Server Configuration
-server.port=8080
+server.port=8005
 spring.sql.init.mode=never
 spring.sql.init.data-locations=classpath:data/mecash.sql
 
@@ -40,19 +40,14 @@ jwt.secret=your key
 jwt.expiration=3600000
 
 
-API Endpoints:
-# authentication
-
+# Authentication
 Method	Endpoint	Description
-POST	/api/auth/signup	Register a new user
-POST	/api/auth/login	#Authenticate user & get JWT
+POST	/auth/register	Register a new user
+POST	/auth/login	Authenticate user & get JWT
 
-
-# Wallet Operations:
+# Wallet Operations
 Method	Endpoint	Description
-POST	/api/wallet/deposit   Deposit money
-POST	/api/wallet/withdraw	Withdraw money
-POST	/api/wallet/transfer	Transfer money
-GET	/api/wallet/balance	    View balance
-GET	/api/wallet/transactions	View transactions
+POST	/transactions/deposit?userId={id}&amount={amount}&currency={currency}	Deposit money
+POST	/transactions/withdraw?userId={id}&amount={amount}&currency={currency}	Withdraw money
+POST	/transactions/transfer?senderId={id}&recipientId={id}&amount={amount}&currency={currency}	Transfer money
 
