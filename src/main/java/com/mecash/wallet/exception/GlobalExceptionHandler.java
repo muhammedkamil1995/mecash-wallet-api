@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -44,6 +45,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneralException(Exception ex) {
+        // Using pattern matching for instanceof and combining conditions
+        if (ex instanceof NoResourceFoundException noResourceEx && 
+            (noResourceEx.getResourcePath().startsWith("v3/api-docs") || 
+             noResourceEx.getResourcePath().startsWith("swagger-ui"))) {
+            return ResponseEntity.notFound().build(); // Let Spring handle this as a 404
+        }
         return buildErrorResponse("An unexpected error occurred.", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 

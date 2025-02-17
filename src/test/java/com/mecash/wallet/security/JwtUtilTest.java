@@ -32,7 +32,7 @@ class JwtUtilTest {
         // Mock JwtProperties
         jwtProperties = Mockito.mock(JwtProperties.class);
         Mockito.when(jwtProperties.getSecret()).thenReturn(SECRET_KEY);
-        Mockito.when(jwtProperties.getExpiration()).thenReturn(EXPIRATION_TIME);
+        Mockito.when(jwtProperties.getExpirationTime()).thenReturn(EXPIRATION_TIME);
 
         // Initialize JwtUtil with mocked properties
         jwtUtil = new JwtUtil(jwtProperties);
