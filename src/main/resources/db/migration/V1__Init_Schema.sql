@@ -1,6 +1,3 @@
--- Disable foreign key checks (H2 does not support this, so remove it)
--- SET FOREIGN_KEY_CHECKS = 0;
-
 -- Drop existing tables if they exist
 DROP TABLE IF EXISTS user_roles;
 DROP TABLE IF EXISTS transactions;
@@ -51,18 +48,20 @@ CREATE TABLE wallets (
     FOREIGN KEY (currency) REFERENCES currencies(currency_code) ON DELETE CASCADE
 );
 
--- Transactions Table
+-- Transactions Table (Fixed Schema)
 CREATE TABLE transactions (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     wallet_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,  -- Added user_id to reference the user making the transaction
     type VARCHAR(20) NOT NULL,  -- Changed ENUM to VARCHAR
     amount DECIMAL(15,2) NOT NULL CHECK (amount > 0),
     currency VARCHAR(10) NOT NULL DEFAULT 'USD',
-    recipient_wallet_id BIGINT NULL,
+    recipient_wallet_id BIGINT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
     FOREIGN KEY (recipient_wallet_id) REFERENCES wallets(id) ON DELETE SET NULL,
-    FOREIGN KEY (currency) REFERENCES currencies(currency_code) ON DELETE CASCADE
+    FOREIGN KEY (currency) REFERENCES currencies(currency_code) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE  -- Ensure correct relation
 );
 
 -- Insert Users
@@ -97,22 +96,22 @@ VALUES
 (2, 'NGN', 100000.00);
 
 -- Insert Transactions
-INSERT INTO transactions (wallet_id, type, amount, currency) 
+INSERT INTO transactions (wallet_id, user_id, type, amount, currency) 
 VALUES 
-(1, 'DEPOSIT', 500.00, 'USD'),  
-(2, 'DEPOSIT', 200.00, 'EUR');
+(1, 1, 'DEPOSIT', 500.00, 'USD'),  
+(2, 1, 'DEPOSIT', 200.00, 'EUR');
 
 -- Insert Transfer Transactions
-INSERT INTO transactions (wallet_id, type, amount, currency, recipient_wallet_id) 
+INSERT INTO transactions (wallet_id, user_id, type, amount, currency, recipient_wallet_id) 
 VALUES 
-(1, 'TRANSFER', 100.00, 'USD', 3),  
-(3, 'TRANSFER', 50.00, 'USD', 1);
+(1, 1, 'TRANSFER', 100.00, 'USD', 3),  
+(3, 2, 'TRANSFER', 50.00, 'USD', 1);
 
 -- Insert Withdrawal Transactions
-INSERT INTO transactions (wallet_id, type, amount, currency) 
+INSERT INTO transactions (wallet_id, user_id, type, amount, currency) 
 VALUES 
-(1, 'WITHDRAWAL', 200.00, 'USD'), 
-(2, 'WITHDRAWAL', 100.00, 'EUR');
+(1, 1, 'WITHDRAWAL', 200.00, 'USD'), 
+(2, 1, 'WITHDRAWAL', 100.00, 'EUR');
 
 -- Verify Data
 SELECT * FROM users;

@@ -47,6 +47,7 @@ public class GlobalExceptionHandler {
         return buildErrorResponse("An unexpected error occurred.", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    // Method to build error response in JSON format
     private ResponseEntity<Map<String, Object>> buildErrorResponse(String message, HttpStatus status) {
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", LocalDateTime.now());

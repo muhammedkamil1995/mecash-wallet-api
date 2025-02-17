@@ -30,8 +30,8 @@ public class Transaction {
     private String currency;
 
     @ManyToOne
-    @JoinColumn(name = "recipient_id", nullable = true) // Nullable for non-transfer transactions
-    private User recipient;
+    @JoinColumn(name = "recipient_wallet_id", nullable = true) // Nullable for non-transfer transactions
+    private Wallet recipientWallet; // Changed from User to Wallet
 
     @Column(nullable = false)
     private LocalDateTime timestamp;
@@ -39,18 +39,18 @@ public class Transaction {
     // Default Constructor (Required by JPA)
     public Transaction() {}
 
-    // Full Constructor
-    public Transaction(Wallet wallet, User user, String type, BigDecimal amount, String currency, User recipient) {
+    // Full Constructor for all transactions including transfers
+    public Transaction(Wallet wallet, User user, String type, BigDecimal amount, String currency, Wallet recipientWallet) {
         this.wallet = wallet;
         this.user = user;
         this.type = type;
         this.amount = amount;
         this.currency = currency;
-        this.recipient = recipient;
+        this.recipientWallet = recipientWallet;
         this.timestamp = LocalDateTime.now();
     }
 
-    // New Constructor Matching Calls from Wallet.java
+    // Constructor for deposits/withdrawals (no recipient wallet)
     public Transaction(Wallet wallet, String type, BigDecimal amount) {
         this.wallet = wallet;
         this.user = wallet.getUser(); // Automatically set the user from the wallet
@@ -79,8 +79,8 @@ public class Transaction {
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
 
-    public User getRecipient() { return recipient; }
-    public void setRecipient(User recipient) { this.recipient = recipient; }
+    public Wallet getRecipientWallet() { return recipientWallet; }
+    public void setRecipientWallet(Wallet recipientWallet) { this.recipientWallet = recipientWallet; }
 
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }

@@ -24,10 +24,10 @@ public class SecurityConfig implements WebMvcConfigurer {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())  // i actually disable CSRF protection for stateless API
+            .csrf(csrf -> csrf.disable())  // Disabling CSRF protection for stateless API
             .cors(cors -> cors.configurationSource(request -> {
                 var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                corsConfig.setAllowedOrigins(java.util.List.of("*"));  // i allow all origins (it can be restricted in production)
+                corsConfig.setAllowedOrigins(java.util.List.of("*"));  // Allowing all origins for development (restrict in production)
                 corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));  // Allow required methods
                 corsConfig.setAllowedHeaders(java.util.List.of("*"));  // Allow all headers
                 return corsConfig;
@@ -38,7 +38,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .anyRequest().authenticated()  // All other requests require authentication
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))  // Stateless session
-            .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));  // Updated frame options
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()));  // Disable frame options for H2 console (use cautiously)
 
         return http.build();
     }
@@ -60,7 +60,7 @@ public class SecurityConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(@NonNull CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("*")  // Allow all origins (you can customize this)
+                .allowedOrigins("*")  // Allow all origins for development (customize for production)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")  // Allow necessary methods
                 .allowedHeaders("*")  // Allow all headers
                 .allowCredentials(false);  // Disable credentials (cookies, authorization headers)

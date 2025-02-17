@@ -15,7 +15,7 @@ public class AppConfig {
         CorsConfiguration config = new CorsConfiguration();
         
         // Allow requests from any origin (for development). Restrict in production.
-        config.addAllowedOriginPattern("*"); // Use addAllowedOriginPattern instead of addAllowedOrigin
+        config.addAllowedOriginPattern("*");
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
         config.setAllowCredentials(true); // Allow credentials (cookies, authorization headers, etc.)

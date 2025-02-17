@@ -22,11 +22,10 @@
 
     <dependencyManagement>
         <dependencies>
-            <!-- Spring Cloud BOM -->
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2024.0.0</version> <!-- Correct version for Spring Boot 3.4.x -->
+                <version>2024.0.0</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>
@@ -58,22 +57,22 @@
             <artifactId>spring-cloud-starter-config</artifactId>
         </dependency>
 
-        <!-- JWT for Authentication -->
+        <!-- JWT Authentication -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
-            <version>0.11.2</version>
+            <version>0.11.5</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
-            <version>0.11.2</version>
+            <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.11.2</version>
+            <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -83,6 +82,13 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.14.0</version> <!-- Use the latest version -->
+        </dependency>
+
 
         <!-- Spring Boot Configuration Processor -->
         <dependency>
@@ -130,26 +136,28 @@
             <artifactId>commons-lang3</artifactId>
         </dependency>
 
-        <!-- Spring Boot Cache (For Caching Performance) -->
+        <!-- Spring Boot Cache -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
 
+        <!-- H2 Database -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <version>2.3.232</version>
+            <version>2.2.224</version>
         </dependency>
 
 
-        <!-- Flyway (For Database Migrations) -->
+        <!-- Flyway 10.21.0 -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
+            <version>10.21.0</version>
         </dependency>
 
-        <!-- Spring Aspects (For Transaction Management and AOP) -->
+        <!-- Spring Aspects -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-aspects</artifactId>
@@ -163,6 +171,22 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>com.mecash.wallet.MecashWalletApiApplication</mainClass>
+                </configuration>
+            </plugin>
+
+            <!-- Flyway Plugin Updated -->
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>10.21.0</version>
+                <configuration>
+                    <url>jdbc:h2:file:~/mecash-db;AUTO_SERVER=TRUE</url>
+                    <user>sa</user>
+                    <password></password>
+                    <driver>org.h2.Driver</driver>
+                    <locations>
+                        <location>classpath:db/migration</location>
+                    </locations>
                 </configuration>
             </plugin>
         </plugins>

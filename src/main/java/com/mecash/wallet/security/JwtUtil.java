@@ -8,6 +8,7 @@ import com.mecash.wallet.config.JwtProperties;
 import com.mecash.wallet.model.RoleType;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,15 +18,14 @@ import java.util.function.Function;
 public class JwtUtil {
 
     private final SecretKey secretKey;
-    private static final long INACTIVITY_TIMEOUT = 20 * 60 * 1000; // 20 minutes
+    private static final long INACTIVITY_TIMEOUT = 20L * 60 * 1000;
+
 
     public JwtUtil(JwtProperties jwtProperties) {
-        this.secretKey = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes());
+        this.secretKey = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
-    /**
-     * Generate JWT token with user's email and role.
-     */
+    // Generate JWT token
     public String generateToken(String email, RoleType role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role.name());
@@ -33,46 +33,38 @@ public class JwtUtil {
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(email)
-                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + INACTIVITY_TIMEOUT))
-                .signWith(secretKey)
+                .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    /**
-     * Validate JWT token.
-     */
+    // Validate token
     public boolean validateToken(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        try {
+            return extractUsername(token).equals(userDetails.getUsername()) && !isTokenExpired(token);
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
     }
 
-    /**
-     * Extract username from token.
-     */
+    // Extract username
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    /**
-     * Extract expiration date from token.
-     */
+    // Extract expiration date
     public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    /**
-     * Extract specific claim from token.
-     */
+    // Extract specific claim
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
+        return claimsResolver.apply(extractAllClaims(token));
     }
 
-    /**
-     * Extract all claims from token.
-     */
-    public Claims extractAllClaims(String token) {
+    // Extract all claims
+    protected Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(secretKey)
                 .build()
@@ -80,26 +72,21 @@ public class JwtUtil {
                 .getBody();
     }
 
-    /**
-     * Check if token is expired.
-     */
+
+    // Check if token is expired
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
-    /**
-     * Refresh token if the user is still active.
-     */
+    // Refresh token if still active
     public String refreshToken(String token) {
-        Claims claims = extractAllClaims(token);
-        Date issuedAt = claims.getIssuedAt();
-        long currentTime = System.currentTimeMillis();
-
-        if (currentTime - issuedAt.getTime() < INACTIVITY_TIMEOUT) {
-            return generateToken(
-                claims.getSubject(), 
-                RoleType.valueOf(claims.get("role", String.class))
-            );
+        try {
+            Claims claims = extractAllClaims(token);
+            if (System.currentTimeMillis() - claims.getIssuedAt().getTime() < INACTIVITY_TIMEOUT) {
+                return generateToken(claims.getSubject(), RoleType.valueOf(claims.get("role", String.class)));
+            }
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
         }
         return token;
     }
