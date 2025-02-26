@@ -44,7 +44,7 @@ public class UserService implements UserDetailsService {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new UserAlreadyExistsException("Email already exists!");
         }
-        user.setPassword(passwordEncoder.encode(user.getPassword())); 
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
@@ -71,8 +71,10 @@ public class UserService implements UserDetailsService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already exists!");
         }
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new UserAlreadyExistsException("Username already exists!");
+        }
 
-        // ✅ Check if "USER" role exists, else create it
         Role userRole = roleRepository.findByName(RoleType.USER)
                 .orElseGet(() -> {
                     Role newRole = new Role(RoleType.USER);
@@ -85,21 +87,21 @@ public class UserService implements UserDetailsService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword())); 
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRoles(roles);
 
         return userRepository.save(user);
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
         return org.springframework.security.core.userdetails.User
-                .withUsername(user.getEmail())
+                .withUsername(user.getUsername())
                 .password(user.getPassword())
-                .roles(user.getRoles().stream().map(role -> role.getName().name()).toArray(String[]::new)) 
+                .roles(user.getRoles().stream().map(role -> role.getName().name()).toArray(String[]::new))
                 .build();
     }
 }

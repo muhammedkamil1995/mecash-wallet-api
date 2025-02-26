@@ -8,21 +8,21 @@ public class LoginRequest {
 
     @NotNull
     @NotBlank
-    @Email(message = "Invalid email format")  // ✅ Ensure email is valid
+    @Email(message = "Invalid email format")  // Ensure email is valid
     private String email;
 
     @NotNull
-    @NotBlank(message = "Password cannot be empty")  // ✅ Prevent empty password
+    @NotBlank(message = "Password cannot be empty")  // Prevent empty password
     private String password;
 
-    private String role = "USER";  // ✅ Default role if not provided
+    private String role = "USER";  // Default role if not provided
 
     public LoginRequest() {}
 
     public LoginRequest(String email, String password, String role) {
         this.email = email;
         this.password = password;
-        this.role = (role != null && !role.isEmpty()) ? role.toUpperCase() : "USER";  // ✅ Prevent null/empty role
+        this.role = (role != null && !role.isEmpty()) ? role.toUpperCase() : "USER";
     }
 
     public String getEmail() {
@@ -46,6 +46,6 @@ public class LoginRequest {
     }
 
     public void setRole(String role) {
-        this.role = (role != null && !role.isEmpty()) ? role.toUpperCase() : "USER";  // ✅ Safe default role
+        this.role = (role != null && !role.isEmpty()) ? role.toUpperCase() : "USER";
     }
 }

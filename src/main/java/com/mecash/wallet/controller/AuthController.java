@@ -1,13 +1,12 @@
 package com.mecash.wallet.controller;
 
 import com.mecash.wallet.dto.RegisterRequest;
-import com.mecash.wallet.model.Role;
+import com.mecash.wallet.exception.UserAlreadyExistsException;
 import com.mecash.wallet.model.RoleType;
 import com.mecash.wallet.model.User;
-import com.mecash.wallet.repository.RoleRepository;
 import com.mecash.wallet.repository.UserRepository;
 import com.mecash.wallet.security.JwtUtil;
-import com.mecash.wallet.service.JwtUserDetailsService;
+import com.mecash.wallet.service.UserService;
 import com.mecash.wallet.utils.JWTDecoder;
 import lombok.Data;
 import org.slf4j.Logger;
@@ -25,84 +24,91 @@ public class AuthController {
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     private final JwtUtil jwtUtil;
-    private final JwtUserDetailsService userDetailsService;
+    private final UserService userService;
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public AuthController(JwtUtil jwtUtil, JwtUserDetailsService userDetailsService,
-                          UserRepository userRepository, RoleRepository roleRepository,
-                          PasswordEncoder passwordEncoder) {
+    public AuthController(JwtUtil jwtUtil, UserService userService, UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.jwtUtil = jwtUtil;
-        this.userDetailsService = userDetailsService;
+        this.userService = userService;
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/register")
     @Transactional
-    public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
-        // Validation: Check for missing fields
-        if (request.getUsername() == null || request.getEmail() == null || request.getPassword() == null || request.getRole() == null) {
-            return ResponseEntity.badRequest().body("Missing required fields: username, email, password, and role are required.");
+    public ResponseEntity<RegisterResponse> register(@RequestBody RegisterRequest request) {
+        if (request.getUsername() == null || request.getEmail() == null || 
+            request.getPassword() == null || request.getRole() == null) {
+            logger.error("Missing required fields in request: {}", request);
+            return ResponseEntity.badRequest().body(new RegisterResponse("Missing required fields", null));
         }
 
-        // Check if username is already taken
-        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            return ResponseEntity.badRequest().body("Username is already taken");
+        try {
+            request.setPassword(passwordEncoder.encode(request.getPassword())); // Always encode password
+            User savedUser = userService.registerUser(request);
+            RoleType roleType = RoleType.valueOf(request.getRole().toUpperCase());
+            String token = jwtUtil.generateToken(savedUser.getUsername(), roleType);
+            logger.info("User registered successfully: {}", savedUser.getUsername());
+            return ResponseEntity.ok(new RegisterResponse("User registered successfully", token));
+        } catch (UserAlreadyExistsException e) {
+            logger.warn("Registration failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new RegisterResponse(e.getMessage(), null));
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid role provided: {}", request.getRole());
+            return ResponseEntity.badRequest().body(new RegisterResponse(e.getMessage(), null));
+        } catch (Exception e) {
+            logger.error("Failed to register user: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new RegisterResponse("Registration failed: " + e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/login")
+    @Transactional
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+        if (request.getUsername() == null || request.getPassword() == null || request.getRole() == null) {
+            logger.error("Missing required fields in request: {}", request);
+            return ResponseEntity.badRequest().body(new LoginResponse("Missing required fields: username, password, and role are required", null));
         }
 
-        // Check if email is already registered
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            return ResponseEntity.badRequest().body("Email is already registered");
-        }
-
-        // Get or create the default role
         RoleType roleType;
         try {
             roleType = RoleType.valueOf(request.getRole().toUpperCase());
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Invalid role provided. Available roles are: USER, ADMIN.");
-        }
-
-        Role userRole = roleRepository.findByName(roleType)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
-
-        // Create and save the user
-        User newUser = new User();
-        newUser.setUsername(request.getUsername());
-        newUser.setEmail(request.getEmail());
-        newUser.setPassword(passwordEncoder.encode(request.getPassword()));
-        newUser.getRoles().add(userRole);
-
-        logger.info("Role '{}' added to user '{}'", userRole.getName(), newUser.getUsername());
-
-        User savedUser = userRepository.save(newUser);
-        logger.info("User saved with id: {}", savedUser.getId());
-
-        return ResponseEntity.ok("User registered successfully");
-    }
-
-    @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequest request) {
-        // Validation: Check for missing fields
-        if (request.getUsername() == null || request.getPassword() == null || request.getRole() == null) {
-            return ResponseEntity.badRequest().body("Missing required fields: username, password, and role are required.");
+            logger.error("Invalid role type: {}", request.getRole());
+            return ResponseEntity.badRequest().body(new LoginResponse("Invalid role type: " + request.getRole(), null));
         }
 
         try {
-            RoleType roleType = RoleType.valueOf(request.getRole().toUpperCase());
+            User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> {
+                    logger.warn("User not found with username: {}", request.getUsername());
+                    return new RuntimeException("User not found with username: " + request.getUsername());
+                });
+
+            // Verify password - Allow both hashed & plain text
+            if (!passwordEncoder.matches(request.getPassword(), user.getPassword()) &&
+                !request.getPassword().equals(user.getPassword())) {
+                logger.warn("Invalid password for user: {}", request.getUsername());
+                return ResponseEntity.badRequest().body(new LoginResponse("Invalid username or password", null));
+            }
+
             String token = jwtUtil.generateToken(request.getUsername(), roleType);
-            return ResponseEntity.ok(token);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Invalid role type: " + request.getRole());
+            logger.info("User logged in successfully: {}", request.getUsername());
+            return ResponseEntity.ok(new LoginResponse("Login successful", token));
+
+        } catch (RuntimeException e) {
+            logger.error("Login failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new LoginResponse("Login failed: " + e.getMessage(), null));
+        } catch (Exception e) {
+            logger.error("Unexpected error during login: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new LoginResponse("Login failed: " + e.getMessage(), null));
         }
     }
 
     @GetMapping("/validate")
     public ResponseEntity<TokenValidationResponse> validate(@RequestParam String token, @RequestParam String username) {
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        UserDetails userDetails = userService.loadUserByUsername(username);
         boolean isValid = jwtUtil.validateToken(token, userDetails);
         return ResponseEntity.ok(new TokenValidationResponse(isValid, isValid ? "Token is valid" : "Invalid token"));
     }
@@ -121,7 +127,28 @@ public class AuthController {
         }
     }
 
-    // Static inner class for LoginRequest
+    @Data
+    static class RegisterResponse {
+        private String message;
+        private String token;
+
+        public RegisterResponse(String message, String token) {
+            this.message = message;
+            this.token = token;
+        }
+    }
+
+    @Data
+    static class LoginResponse {
+        private String message;
+        private String token;
+
+        public LoginResponse(String message, String token) {
+            this.message = message;
+            this.token = token;
+        }
+    }
+
     @Data
     static class LoginRequest {
         private String username;
@@ -129,7 +156,6 @@ public class AuthController {
         private String role;
     }
 
-    // Static inner class for TokenValidationResponse
     @Data
     static class TokenValidationResponse {
         private boolean valid;

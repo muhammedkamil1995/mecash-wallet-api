@@ -75,8 +75,7 @@ public class WalletService {
         return walletRepository.findAllByUserIdAndCurrency(userId, currency);
     }
 
-    public Wallet findWalletByUserId(Long userId) {
-        return walletRepository.findByUserId(userId)
-                .orElseThrow(() -> new WalletException(WALLET_NOT_FOUND));
+    public List<Wallet> findWalletsByUserId(Long userId) {
+        return walletRepository.findByUserId(userId);
     }
 }

@@ -1,10 +1,12 @@
 package com.mecash.wallet.model;
 
 import jakarta.persistence.*;
+import java.io.Serializable;
 
 @Entity
 @Table(name = "roles")
-public class Role {
+public class Role implements Serializable {  // 🔥 Implements Serializable
+    private static final long serialVersionUID = 1L;  // 🔥 Add serialVersionUID
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

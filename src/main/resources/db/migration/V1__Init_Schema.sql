@@ -8,17 +8,18 @@ DROP TABLE IF EXISTS users;
 
 -- Users Table
 CREATE TABLE users (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,  -- Store hashed passwords
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR_IGNORECASE(50) NOT NULL UNIQUE,
+    email VARCHAR_IGNORECASE(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Roles Table
 CREATE TABLE roles (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR_IGNORECASE(50) NOT NULL UNIQUE
 );
 
 -- User Roles Table (Many-to-Many Relationship)
@@ -32,36 +33,40 @@ CREATE TABLE user_roles (
 
 -- Currencies Table
 CREATE TABLE currencies (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     currency_code VARCHAR(10) NOT NULL UNIQUE,
     exchange_rate DECIMAL(10,6) NOT NULL DEFAULT 1.000000,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Removed ON UPDATE
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Wallets Table
 CREATE TABLE wallets (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     currency VARCHAR(10) NOT NULL DEFAULT 'USD',
-    balance DECIMAL(15,2) NOT NULL DEFAULT 0.00 CHECK (balance >= 0),
+    balance DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (currency) REFERENCES currencies(currency_code) ON DELETE CASCADE
+    FOREIGN KEY (currency) REFERENCES currencies(currency_code) ON DELETE CASCADE,
+    CHECK (balance >= 0)
 );
 
--- Transactions Table (Fixed Schema)
+-- Transactions Table
 CREATE TABLE transactions (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     wallet_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,  -- Added user_id to reference the user making the transaction
-    type VARCHAR(20) NOT NULL,  -- Changed ENUM to VARCHAR
-    amount DECIMAL(15,2) NOT NULL CHECK (amount > 0),
+    user_id BIGINT NOT NULL,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('DEPOSIT', 'TRANSFER', 'WITHDRAWAL')),
+    amount DECIMAL(15,2) NOT NULL CHECK (amount >= 0.01),
     currency VARCHAR(10) NOT NULL DEFAULT 'USD',
-    recipient_wallet_id BIGINT,
+    recipient_wallet_id BIGINT NULL,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
     FOREIGN KEY (recipient_wallet_id) REFERENCES wallets(id) ON DELETE SET NULL,
     FOREIGN KEY (currency) REFERENCES currencies(currency_code) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE  -- Ensure correct relation
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Insert Users

@@ -6,18 +6,18 @@ import com.mecash.wallet.model.Wallet;
 import com.mecash.wallet.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
-@ActiveProfiles("test")
+@ExtendWith(MockitoExtension.class)
 class TransactionServiceTest {
 
     @Mock
@@ -26,12 +26,12 @@ class TransactionServiceTest {
     @Mock
     private WalletService walletService;
 
+    @InjectMocks
     private TransactionService transactionService;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-        transactionService = new TransactionService(transactionRepository, walletService);
+        // No need for MockitoAnnotations.openMocks() since we're using @ExtendWith(MockitoExtension.class)
     }
 
     @Test
@@ -41,6 +41,7 @@ class TransactionServiceTest {
         wallet.setId(1L);
         when(walletService.findWalletByUserIdAndCurrency(anyLong(), anyString())).thenReturn(wallet);
         doNothing().when(walletService).creditWallet(any(Wallet.class), any(BigDecimal.class));
+
         Transaction transaction = new Transaction(wallet, "DEPOSIT", BigDecimal.TEN);
         when(transactionRepository.save(any(Transaction.class))).thenReturn(transaction);
 
@@ -49,8 +50,8 @@ class TransactionServiceTest {
 
         // Assert
         assertEquals("Deposit successful!", result);
-        verify(walletService).creditWallet(wallet, BigDecimal.TEN);
-        verify(transactionRepository).save(any(Transaction.class));
+        verify(walletService, times(1)).creditWallet(wallet, BigDecimal.TEN);
+        verify(transactionRepository, times(1)).save(any(Transaction.class));
     }
 
     @Test
@@ -61,6 +62,7 @@ class TransactionServiceTest {
         wallet.setBalance(BigDecimal.valueOf(100));
         when(walletService.findWalletByUserIdAndCurrency(anyLong(), anyString())).thenReturn(wallet);
         doNothing().when(walletService).debitWallet(any(Wallet.class), any(BigDecimal.class));
+
         Transaction transaction = new Transaction(wallet, "WITHDRAWAL", BigDecimal.TEN);
         when(transactionRepository.save(any(Transaction.class))).thenReturn(transaction);
 
@@ -69,8 +71,8 @@ class TransactionServiceTest {
 
         // Assert
         assertEquals("Withdrawal successful!", result);
-        verify(walletService).debitWallet(wallet, BigDecimal.TEN);
-        verify(transactionRepository).save(any(Transaction.class));
+        verify(walletService, times(1)).debitWallet(wallet, BigDecimal.TEN);
+        verify(transactionRepository, times(1)).save(any(Transaction.class));
     }
 
     @Test
@@ -79,14 +81,19 @@ class TransactionServiceTest {
         Wallet senderWallet = new Wallet();
         senderWallet.setId(1L);
         senderWallet.setBalance(BigDecimal.valueOf(100));
+
         Wallet recipientWallet = new Wallet();
         recipientWallet.setId(2L);
+
         when(walletService.findWalletByUserIdAndCurrency(eq(1L), anyString())).thenReturn(senderWallet);
         when(walletService.findWalletByUserIdAndCurrency(eq(2L), anyString())).thenReturn(recipientWallet);
-        doNothing().when(walletService).debitWallet(any(Wallet.class), any(BigDecimal.class));
-        doNothing().when(walletService).creditWallet(any(Wallet.class), any(BigDecimal.class));
+
+        doNothing().when(walletService).debitWallet(senderWallet, BigDecimal.TEN);
+        doNothing().when(walletService).creditWallet(recipientWallet, BigDecimal.TEN);
+
         Transaction transaction = new Transaction(senderWallet, "TRANSFER", BigDecimal.TEN);
         transaction.setRecipientWallet(recipientWallet);
+
         when(transactionRepository.save(any(Transaction.class))).thenReturn(transaction);
 
         // Act
@@ -94,9 +101,9 @@ class TransactionServiceTest {
 
         // Assert
         assertEquals("Transfer successful!", result);
-        verify(walletService).debitWallet(senderWallet, BigDecimal.TEN);
-        verify(walletService).creditWallet(recipientWallet, BigDecimal.TEN);
-        verify(transactionRepository).save(any(Transaction.class));
+        verify(walletService, times(1)).debitWallet(senderWallet, BigDecimal.TEN);
+        verify(walletService, times(1)).creditWallet(recipientWallet, BigDecimal.TEN);
+        verify(transactionRepository, times(1)).save(any(Transaction.class));
     }
 
     @Test
@@ -104,7 +111,9 @@ class TransactionServiceTest {
         // Arrange
         Wallet wallet = new Wallet();
         wallet.setId(1L);
+
         when(walletService.findWalletByUserIdAndCurrency(anyLong(), anyString())).thenReturn(wallet);
+
         Transaction transaction = new Transaction(wallet, "DEPOSIT", BigDecimal.TEN);
         when(transactionRepository.save(any(Transaction.class))).thenReturn(transaction);
 
@@ -114,8 +123,6 @@ class TransactionServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals("DEPOSIT", result.getType());
-        verify(transactionRepository).save(any(Transaction.class));
+        verify(transactionRepository, times(1)).save(any(Transaction.class));
     }
-
-    // Additional tests for failure scenarios can be added here, like insufficient balance, etc.
 }

@@ -1,7 +1,7 @@
 package com.mecash.wallet.controller;
 
-
-import com.mecash.wallet.model.Transaction;
+import com.mecash.wallet.dto.TransactionRequest;
+import com.mecash.wallet.dto.TransactionResponse;
 import com.mecash.wallet.service.TransactionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,12 +13,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.math.BigDecimal;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 class TransactionControllerTest {
@@ -38,17 +36,26 @@ class TransactionControllerTest {
 
     @Test
     void shouldCreateTransactionSuccessfully() throws Exception {
-        // Mocking the transaction service behavior
-        when(transactionService.createTransaction(anyLong(), any(BigDecimal.class), anyString(), null))
-                .thenReturn(new Transaction());
+        // Mocking service response
+        TransactionResponse mockResponse = new TransactionResponse("Transaction successful", 1L);
+        when(transactionService.processTransaction(any(), any(TransactionRequest.class))).thenReturn(mockResponse);
 
         // Sending a mock request
-        mockMvc.perform(post("/transaction/create")
+        mockMvc.perform(post("/transactions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"walletId\": 1, \"amount\": 50.00, \"transactionType\": \"CREDIT\"}"))
-                .andExpect(status().isCreated()); // Changed to isCreated() for a proper HTTP status
+                .content("""
+                    {
+                      "walletId": 1,
+                      "amount": 50.00,
+                      "currency": "USD",
+                      "type": "DEPOSIT"
+                    }
+                    """))
+                .andExpect(status().isCreated()) // Expect HTTP 201 Created
+                .andExpect(jsonPath("$.message").value("Transaction successful"))
+                .andExpect(jsonPath("$.transactionId").value(1));
 
         // Verify service call
-        verify(transactionService, times(1)).createTransaction(anyLong(), any(BigDecimal.class), anyString(), null);
+        verify(transactionService, times(1)).processTransaction(any(), any(TransactionRequest.class));
     }
 }
