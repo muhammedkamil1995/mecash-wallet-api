@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -34,6 +35,7 @@ public class WalletController {
     private static final String WITHDRAWAL_SUCCESSFUL = "Withdrawal successful";
     private static final String TRANSFER_SUCCESSFUL = "Transfer successful";
     private static final String CURRENCY_MISMATCH = "Wallets must use the same currency";
+    private static final String NO_WALLETS_FOUND_FOR_CURRENCY = "You don't have a %s wallet";
     private static final String UNAUTHORIZED_ATTEMPT_LOG = "Unauthorized %s attempt by {} on wallet {}";
     private static final String SUCCESS_LOG = "%s {} {} %s wallet {} for user {}";
     private static final String WITHDRAWAL_FAILED_LOG = "Withdrawal failed for wallet {}: {}";
@@ -45,6 +47,7 @@ public class WalletController {
         this.userRepository = userRepository;
     }
 
+    // Get all wallets for the authenticated user
     @GetMapping
     @Transactional(readOnly = true)
     public ResponseEntity<List<WalletDTO>> getUserWallets() {
@@ -60,6 +63,51 @@ public class WalletController {
                 .toList();
         logger.info("Retrieved {} wallets for user: {}", walletDTOs.size(), username);
         return ResponseEntity.ok(walletDTOs);
+    }
+
+    // Get wallets by currency for the authenticated user
+    @GetMapping("/currency/{currencyCode}")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Object> getWalletsByCurrency(@PathVariable String currencyCode) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    logger.warn("User not found with username: {}", username);
+                    return new RuntimeException(USER_NOT_FOUND);
+                });
+
+        List<Wallet> wallets = walletRepository.findAllByUserIdAndCurrency(user.getId(), currencyCode);
+        if (wallets.isEmpty()) {
+            logger.info("No wallets found for currency {} for user {}", currencyCode, username);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Collections.singletonMap("message", String.format(NO_WALLETS_FOUND_FOR_CURRENCY, currencyCode)));
+        }
+
+        List<WalletDTO> walletDTOs = wallets.stream()
+                .map(wallet -> new WalletDTO(wallet.getId(), wallet.getUser().getUsername(), wallet.getCurrency(), wallet.getBalance()))
+                .toList();
+
+        logger.info("Retrieved {} wallets in {} for user: {}", walletDTOs.size(), currencyCode, username);
+        return ResponseEntity.ok(walletDTOs);
+    }
+
+    // Get a specific wallet's balance
+    @GetMapping("/{walletId}")
+    @Transactional(readOnly = true)
+    public ResponseEntity<WalletDTO> getWalletBalance(@PathVariable Long walletId) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Wallet wallet = walletRepository.findById(walletId)
+                .orElseThrow(() -> {
+                    logger.warn(WALLET_NOT_FOUND_LOG, walletId);
+                    return new RuntimeException(WALLET_NOT_FOUND);
+                });
+        if (!wallet.getUser().getUsername().equals(username)) {
+            logger.warn(UNAUTHORIZED_ATTEMPT_LOG, "balance check", username, walletId);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+        }
+        WalletDTO walletDTO = new WalletDTO(wallet.getId(), wallet.getUser().getUsername(), wallet.getCurrency(), wallet.getBalance());
+        logger.info("Retrieved balance for wallet {}: {} {} for user {}", walletId, wallet.getBalance(), wallet.getCurrency(), username);
+        return ResponseEntity.ok(walletDTO);
     }
 
     @PostMapping("/{walletId}/deposit")
